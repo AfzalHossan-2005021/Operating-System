@@ -270,6 +270,15 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
             mv "$Student_ID" "$Problematic_Submissions"
         fi
     fi
+    if [ "$skip_evaluation" == "true" ]; then
+        marks=0
+        marks_deducted=0
+    else
+        if grep -q "$Student_ID" "$Plagiarism_Analysis_File"; then
+            marks_deducted=$((marks_deducted + Total_Marks * Plagiarism_Penalty / 100))
+            remarks+="plagiarism detected"
+        fi
+    fi
     total_marks=$((marks - marks_deducted))
     echo "${Student_ID}, ${marks}, ${marks_deducted}, ${total_marks}, ${remarks}" >> "$Marks_File"
 done
