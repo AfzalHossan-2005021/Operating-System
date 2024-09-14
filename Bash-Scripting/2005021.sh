@@ -167,7 +167,28 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
                     "rar") unrar x "$file_name" extracted &> /dev/null;;
                     "tar") tar -xf "$file_name" -C extracted;;
                 esac
-                
+                cd extracted
+                file_count=$(find . -maxdepth 1 -mindepth 1 | wc -l)
+                if [ $file_count -eq 1 ]; then
+                    dir_count=$(find . -maxdepth 1 -mindepth 1 -type d | wc -l)
+                    if [ $dir_count -eq 1 ]; then
+                        dir_name=$(find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+                        if [ "$dir_name" != "$Student_ID" ]; then
+                            mv "$dir_name" "$Student_ID"
+                            marks_deducted=$((marks_deducted + Submission_Penalty))
+                            remarks+="issue case #4; "
+                        fi
+                        mv "$Student_ID" ..
+                        cd ..
+                        rm -r extracted
+                    else
+                        cd ..
+                        mv extracted "$Student_ID"
+                    fi
+                else
+                    cd ..
+                    mv extracted "$Student_ID"
+                fi
             else
                 skip_evaluation="true"
                 remarks="issue case #2; "
