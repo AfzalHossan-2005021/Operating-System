@@ -232,6 +232,35 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
                 fi
             done
         done
+        if [ -f "$first_matching_file" ]; then
+            generated_output_file="${Student_ID}_output.txt"
+            case "$fils_extension" in
+                "c") 
+                    gcc -o "${Student_ID}" "${Student_ID}.c"
+                    "./${Student_ID}" >> "${generated_output_file}"
+                    rm "${Student_ID}"
+                    ;;
+                "cpp")
+                    g++ -o "${Student_ID}" "${Student_ID}.cpp"
+                    "./${Student_ID}" >> "${generated_output_file}"
+                    rm "${Student_ID}"
+                    ;;
+                "py")
+                    python3 "${Student_ID}.py" >> "${generated_output_file}"
+                    ;;
+                "sh")
+                    bash "${Student_ID}.sh" >> "${generated_output_file}"
+                    ;;
+            esac
+
+            cd ..
+            mv -f "$Student_ID" "$Valid_Submissions"
+        else
+            skip_evaluation="true"
+            remarks="issue case #3; "
+            cd ..
+            mv "$Student_ID" "$Problematic_Submissions"
+        fi
     fi
     total_marks=$((marks - marks_deducted))
     echo "${Student_ID}, ${marks}, ${marks_deducted}, ${total_marks}, ${remarks}" >> "$Marks_File"
