@@ -253,6 +253,14 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
                     ;;
             esac
 
+            # Convert the files to unix format
+            dos2unix -q "$generated_output_file"
+            dos2unix -q "$Expected_Output_File"
+
+            # Count missing lines
+            missing_lines_count=$(comm -13 <(sort "$generated_output_file") <(sort "$Expected_Output_File") | wc -l)
+
+            marks=$((marks + (Total_Marks - Output_Penalty * (missing_lines_count))))
             cd ..
             mv -f "$Student_ID" "$Valid_Submissions"
         else
