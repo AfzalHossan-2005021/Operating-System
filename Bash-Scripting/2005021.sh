@@ -216,6 +216,23 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
         skip_evaluation="true"
         remarks+="missing submission"
     fi
+    if [ -d "$Student_ID" ]; then
+        cd "$Student_ID"
+        files_starting_with_Student_ID=$(find . -maxdepth 2 -name "${Student_ID}*" -print | sed 's|^\./||')
+        fils_extension=""
+        first_matching_file=""
+        for file in $files_starting_with_Student_ID; do
+            fils_extension="${file##*.}"
+            for extension in "${Allowed_Extensions[@]}"; do
+                if [ "$fils_extension" == "$extension" ]; then
+                    first_matching_file="$file"
+                    break 2
+                else
+                    first_matching_file=""
+                fi
+            done
+        done
+    fi
     total_marks=$((marks - marks_deducted))
     echo "${Student_ID}, ${marks}, ${marks_deducted}, ${total_marks}, ${remarks}" >> "$Marks_File"
 done
