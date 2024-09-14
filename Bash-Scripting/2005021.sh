@@ -145,3 +145,31 @@ Problematic_Submissions="issues"
 Valid_Submissions="checked"
 mkdir -p "$Problematic_Submissions" "$Valid_Submissions"
 
+# Loop through the student directories
+for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
+    skip_evaluation="false"
+    marks=0
+    marks_deducted=0
+    total_marks=0
+    remarks=""
+    file_name=$(find . -maxdepth 1 -name "${Student_ID}*" -print -quit | sed 's|^\./||')
+    if [ -f "$file_name" ]; then
+        extension="${file_name##*.}"
+        if [[ " ${Possible_Archived_Formats[@]} " =~ " $extension " ]]; then
+            
+        elif [[ " ${Possible_Programming_Languages[@]} " =~ " $extension " ]]; then
+            
+        else
+            skip_evaluation="true"
+            remarks+="Invalid file extension"
+        fi
+    elif [ -d "$file_name" ]; then
+        marks_deducted=$((marks_deducted + Submission_Penalty))
+        remarks+="issue case #1; "
+    else
+        skip_evaluation="true"
+        remarks+="missing submission"
+    fi
+    total_marks=$((marks - marks_deducted))
+    echo "${Student_ID}, ${marks}, ${marks_deducted}, ${total_marks}, ${remarks}" >> "$Marks_File"
+done
