@@ -129,3 +129,19 @@ for language in "${Allowed_Programming_Languages[@]}"; do
     esac
 done
 
+# change the directory to the working directory
+if ! cd "$Working_Directory"; then
+    echo "Error: Unable to change directory to the working directory."
+    exit 1
+fi
+
+# Create a csv file to store the marks
+Marks_File="marks.csv"
+# Write the CSV header
+echo "id, marks, marks_deducted, total_marks, remarks" > "$Marks_File"
+
+# Create a directory to store problematic submissions and valid submissions
+Problematic_Submissions="issues"
+Valid_Submissions="checked"
+mkdir -p "$Problematic_Submissions" "$Valid_Submissions"
+
