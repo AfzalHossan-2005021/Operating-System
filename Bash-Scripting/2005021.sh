@@ -117,3 +117,15 @@ if [[ ! "${Plagiarism_Penalty}" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+# Create an array to store the possible extensions
+Allowed_Extensions=()
+# Loop through each programming language and add the corresponding extension
+for language in "${Allowed_Programming_Languages[@]}"; do
+    case "$language" in
+        "c") Allowed_Extensions+=("c");;
+        "cpp") Allowed_Extensions+=("cpp");;
+        "python") Allowede_Extensions+=("py");;
+        "sh") Allowed_Extensions+=("sh");;
+    esac
+done
+
