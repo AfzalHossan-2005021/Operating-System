@@ -19,6 +19,39 @@ if [ ! -r $2 ]; then
     exit 1
 fi
 
+# Checking if the required tools are installed
+if ! which dos2unix > /dev/null 2>&1; then
+    echo "dos2unix is not installed. Please install it."
+    exit 1
+elif ! which unzip > /dev/null 2>&1; then
+    echo "unzip is not installed. Please install it."
+    exit 1
+elif ! which unrar > /dev/null 2>&1; then
+    echo "unrar is not installed. Please install it."
+    exit 1
+elif ! which tar > /dev/null 2>&1; then
+    echo "tar is not installed. Please install it."
+    exit 1
+elif ! which gcc > /dev/null 2>&1; then
+    echo "gcc is not installed. Please install it."
+    exit 1
+elif ! which g++ > /dev/null 2>&1; then
+    echo "g++ is not installed. Please install it."
+    exit 1
+elif ! which python3 > /dev/null 2>&1; then
+    echo "python3 is not installed. Please install it."
+    exit 1
+elif ! which bash > /dev/null 2>&1; then
+    echo "bash is not installed. Please install it."
+    exit 1
+elif ! which comm > /dev/null 2>&1; then
+    echo "comm is not installed. Please install it."
+    exit 1
+elif ! which realpath > /dev/null 2>&1; then
+    echo "realpath is not installed. Please install it."
+    exit 1
+fi
+
 # Convert the input_file to unix format
 dos2unix -q $2
 
