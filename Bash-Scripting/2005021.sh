@@ -156,9 +156,34 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
     if [ -f "$file_name" ]; then
         extension="${file_name##*.}"
         if [[ " ${Possible_Archived_Formats[@]} " =~ " $extension " ]]; then
-            
+            if [[ " ${Allowed_Archived_Formats[@]} " =~ " $extension " ]]; then
+                if [ "${Is_Archive}" == "false" ]; then
+                    marks_deducted=$((marks_deducted + Submission_Penalty))
+                    remarks+="Expected unarchived but submitted archived; "
+                fi
+                mkdir -p extracted
+                case "$extension" in
+                    "zip") unzip -q "$file_name" -d extracted;;
+                    "rar") unrar x "$file_name" extracted &> /dev/null;;
+                    "tar") tar -xf "$file_name" -C extracted;;
+                esac
+                
+            else
+                skip_evaluation="true"
+                remarks="issue case #2; "
+            fi
         elif [[ " ${Possible_Programming_Languages[@]} " =~ " $extension " ]]; then
-            
+            if [[ " ${Allowed_Programming_Languages[@]} " =~ " $extension " ]]; then
+                if [ "${Is_Archive}" == "true" ]; then
+                    marks_deducted=$((marks_deducted + Submission_Penalty))
+                    remarks+="Expected archived but submitted unarchived; "
+                fi
+                mkdir -p "$Student_ID"
+                mv "$file_name" "$Student_ID"
+            else
+                skip_evaluation="true"
+                remarks="issue case #3; "
+            fi
         else
             skip_evaluation="true"
             remarks+="Invalid file extension"
