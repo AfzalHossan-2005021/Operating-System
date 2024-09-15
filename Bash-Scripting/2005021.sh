@@ -1,6 +1,13 @@
 #!/bin/bash
 
-# Check if the file exists
+# Check if the number of arguments is correct
+if [ "$#" -ne 2 ]; then
+    echo "Argument missing."
+    echo "Please use: $0 -i input_file.txt"
+    exit 1
+fi
+
+# Check if the number of arguments is correct
 if [ ! -f $2 ]; then
     echo "File does not exist: $2"
     exit 1
@@ -9,6 +16,39 @@ fi
 # Check if the file is readable 
 if [ ! -r $2 ]; then
     echo "File is not readable: $2"
+    exit 1
+fi
+
+# Checking if the required tools are installed
+if ! which dos2unix > /dev/null 2>&1; then
+    echo "dos2unix is not installed. Please install it."
+    exit 1
+elif ! which unzip > /dev/null 2>&1; then
+    echo "unzip is not installed. Please install it."
+    exit 1
+elif ! which unrar > /dev/null 2>&1; then
+    echo "unrar is not installed. Please install it."
+    exit 1
+elif ! which tar > /dev/null 2>&1; then
+    echo "tar is not installed. Please install it."
+    exit 1
+elif ! which gcc > /dev/null 2>&1; then
+    echo "gcc is not installed. Please install it."
+    exit 1
+elif ! which g++ > /dev/null 2>&1; then
+    echo "g++ is not installed. Please install it."
+    exit 1
+elif ! which python3 > /dev/null 2>&1; then
+    echo "python3 is not installed. Please install it."
+    exit 1
+elif ! which bash > /dev/null 2>&1; then
+    echo "bash is not installed. Please install it."
+    exit 1
+elif ! which comm > /dev/null 2>&1; then
+    echo "comm is not installed. Please install it."
+    exit 1
+elif ! which realpath > /dev/null 2>&1; then
+    echo "realpath is not installed. Please install it."
     exit 1
 fi
 
@@ -71,11 +111,12 @@ if [[ ! "${Output_Penalty}" =~ ^[0-9]+$ ]]; then
 fi
 
 # Check if the sixth line is valid
-Working_Directory="${input_file[5]}"
-if [ ! -d "$Working_Directory" ]; then
+Given_Working_Directory="${input_file[5]}"
+if [ ! -d "$Given_Working_Directory" ]; then
     echo "The input file is in invalid format: The sixth line contains an invalid Working Directory."
     exit 1
 fi
+Working_Directory=$(realpath "$Given_Working_Directory")
 
 # Check if the seventh line is valid
 read -a Student_ID_Range <<< "${input_file[6]}"
@@ -90,11 +131,12 @@ if [[ ! "${First_Student_ID}" =~ ^[0-9]+$ ]] || [[ ! "${Last_Student_ID}" =~ ^[0
 fi
 
 # Check if the eighth line is valid
-Expected_Output_File="${input_file[7]}"
-if [ ! -f "$Expected_Output_File" ]; then
+Given_Expected_Output_File="${input_file[7]}"
+if [ ! -f "$Given_Expected_Output_File" ]; then
     echo "The input file is in invalid format: The eighth line contains an invalid Expected Output File Location."
     exit 1
 fi
+Expected_Output_File=$(realpath "$Given_Expected_Output_File")
 
 # Check if the ninth line is valid
 Submission_Penalty="${input_file[8]}"
@@ -104,11 +146,12 @@ if [[ ! "${Submission_Penalty}" =~ ^[0-9]+$ ]]; then
 fi
 
 # Check if the tenth line is valid
-Plagiarism_Analysis_File="${input_file[9]}"
-if [ ! -f "$Plagiarism_Analysis_File" ]; then
+Given_Plagiarism_Analysis_File="${input_file[9]}"
+if [ ! -f "$Given_Plagiarism_Analysis_File" ]; then
     echo "The input file is in invalid format: The tenth line contains an invalid Plagiarism Analysis File."
     exit 1
 fi
+Plagiarism_Analysis_File=$(realpath "$Given_Plagiarism_Analysis_File")
 
 # Check if the eleventh line is valid
 Plagiarism_Penalty="${input_file[10]}"
@@ -118,14 +161,17 @@ if [[ ! "${Plagiarism_Penalty}" =~ ^[0-9]+$ ]]; then
 fi
 
 # Create an array to store the possible extensions
+Possible_Extensions=("c" "cpp" "py" "sh")
+
+# Create an array to store the possible extensions
 Allowed_Extensions=()
 # Loop through each programming language and add the corresponding extension
 for language in "${Allowed_Programming_Languages[@]}"; do
     case "$language" in
-        "c") Allowed_Extensions+=("c");;
-        "cpp") Allowed_Extensions+=("cpp");;
-        "python") Allowede_Extensions+=("py");;
-        "sh") Allowed_Extensions+=("sh");;
+        "c")        Allowed_Extensions+=("c");;
+        "cpp")      Allowed_Extensions+=("cpp");;
+        "python")   Allowed_Extensions+=("py");;
+        "sh")       Allowed_Extensions+=("sh");;
     esac
 done
 
@@ -137,12 +183,14 @@ fi
 
 # Create a csv file to store the marks
 Marks_File="marks.csv"
+rm -f "$Marks_File"
 # Write the CSV header
 echo "id, marks, marks_deducted, total_marks, remarks" > "$Marks_File"
 
 # Create a directory to store problematic submissions and valid submissions
 Problematic_Submissions="issues"
 Valid_Submissions="checked"
+rm -rf "$Problematic_Submissions" "$Valid_Submissions"
 mkdir -p "$Problematic_Submissions" "$Valid_Submissions"
 
 # Loop through the student directories
@@ -161,10 +209,11 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
                     marks_deducted=$((marks_deducted + Submission_Penalty))
                     remarks+="Expected unarchived but submitted archived; "
                 fi
+                rm -rf extracted
                 mkdir -p extracted
                 case "$extension" in
-                    "zip") unzip -q "$file_name" -d extracted;;
-                    "rar") unrar x "$file_name" extracted &> /dev/null;;
+                    "zip") unzip -oq "$file_name" -d extracted;;
+                    "rar") unrar x -o+ "$file_name" extracted &> /dev/null;;
                     "tar") tar -xf "$file_name" -C extracted;;
                 esac
                 cd extracted
@@ -191,23 +240,27 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
                 fi
             else
                 skip_evaluation="true"
+                marks_deducted=$((marks_deducted + Submission_Penalty))
                 remarks="issue case #2; "
             fi
-        elif [[ " ${Possible_Programming_Languages[@]} " =~ " $extension " ]]; then
-            if [[ " ${Allowed_Programming_Languages[@]} " =~ " $extension " ]]; then
+        elif [[ " ${Possible_Extensions[@]} " =~ " $extension " ]]; then
+            mkdir -p "$Student_ID"
+            mv "$file_name" "$Student_ID"
+            if [[ " ${Allowed_Extensions[@]} " =~ " $extension " ]]; then
                 if [ "${Is_Archive}" == "true" ]; then
                     marks_deducted=$((marks_deducted + Submission_Penalty))
                     remarks+="Expected archived but submitted unarchived; "
                 fi
-                mkdir -p "$Student_ID"
-                mv "$file_name" "$Student_ID"
             else
                 skip_evaluation="true"
+                mv "$Student_ID" "$Problematic_Submissions"
+                marks_deducted=$((marks_deducted + Submission_Penalty))
                 remarks="issue case #3; "
             fi
         else
             skip_evaluation="true"
-            remarks+="Invalid file extension"
+            marks_deducted=$((marks_deducted + Submission_Penalty))
+            remarks+="issue case #2; issue case #3;"
         fi
     elif [ -d "$file_name" ]; then
         marks_deducted=$((marks_deducted + Submission_Penalty))
@@ -218,7 +271,7 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
     fi
     if [ -d "$Student_ID" ]; then
         cd "$Student_ID"
-        files_starting_with_Student_ID=$(find . -maxdepth 2 -name "${Student_ID}*" -print | sed 's|^\./||')
+        files_starting_with_Student_ID=$(find . -name "${Student_ID}*" -print | sed 's|^\./||')
         fils_extension=""
         first_matching_file=""
         for file in $files_starting_with_Student_ID; do
@@ -265,6 +318,7 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
             mv -f "$Student_ID" "$Valid_Submissions"
         else
             skip_evaluation="true"
+            marks_deducted=$((marks_deducted + Submission_Penalty))
             remarks="issue case #3; "
             cd ..
             mv "$Student_ID" "$Problematic_Submissions"
@@ -272,13 +326,31 @@ for Student_ID in $(seq "$First_Student_ID" "$Last_Student_ID"); do
     fi
     if [ "$skip_evaluation" == "true" ]; then
         marks=0
-        marks_deducted=0
-    else
-        if grep -q "$Student_ID" "$Plagiarism_Analysis_File"; then
-            marks_deducted=$((marks_deducted + Total_Marks * Plagiarism_Penalty / 100))
-            remarks+="plagiarism detected"
-        fi
     fi
     total_marks=$((marks - marks_deducted))
+    if grep -q "$Student_ID" "$Plagiarism_Analysis_File"; then
+        total_marks=$((-Total_Marks * Plagiarism_Penalty / 100))
+        remarks+="plagiarism detected"
+    fi
     echo "${Student_ID}, ${marks}, ${marks_deducted}, ${total_marks}, ${remarks}" >> "$Marks_File"
+done
+
+# Loop through files in the working directory to check if they are within the range
+for file in "${Working_Directory}/"*; do
+    # Extract file name without directory path
+    filename=$(basename "$file")
+
+    # Remove file extension
+    filename_without_extension="${filename%.*}"
+    
+    # Check if filename is numeric
+    if [[ "$filename_without_extension" =~ ^[0-9]+$ ]]; then
+        # Convert filename to integer
+        fileID=$((filename_without_extension))
+        
+        # Check if fileID is not in the range
+        if [ "$fileID" -lt "$First_Student_ID" ] || [ "$fileID" -gt "$Last_Student_ID" ]; then
+            echo "$filename_without_extension, 0, 0, 0, issue case #5" >> "$Marks_File"
+        fi
+    fi
 done
