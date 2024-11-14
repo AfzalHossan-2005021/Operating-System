@@ -8,6 +8,7 @@
 #define STARTING_STANDARD_TICKET 1001
 #define STARTING_PREMIUM_TICKET 2001
 #define GALLARY1_CAPACITY 5
+#define GLASS_CORRIDOR_CAPACITY 3
 
 using namespace std;
 
@@ -19,7 +20,9 @@ enum zoo_position {
     STEP1,
     STEP2,
     STEP3,
-    C
+    C,
+    D,
+    E
 };
 
 
@@ -33,6 +36,7 @@ pthread_mutex_t step2_lock;
 pthread_mutex_t step3_lock;
 
 sem_t sem_C;
+sem_t sem_D;
 
 
 // Generate a random number using the Poisson distribution
@@ -79,6 +83,7 @@ void init_lock() {
     pthread_mutex_init(&step2_lock, NULL);
     pthread_mutex_init(&step3_lock, NULL);
     sem_init(&sem_C, 0, GALLARY1_CAPACITY);
+    sem_init(&sem_D, 0, GLASS_CORRIDOR_CAPACITY);
 }
 
 void destroy_lock() {
@@ -89,6 +94,7 @@ void destroy_lock() {
     pthread_mutex_destroy(&step2_lock);
     pthread_mutex_destroy(&step3_lock);
     sem_destroy(&sem_C);
+    sem_destroy(&sem_D);
 }
 
 auto start_time = std::chrono::high_resolution_clock::now();
@@ -101,7 +107,7 @@ long long get_time() {
 }
 
 void print_step(visitor* visitor, zoo_position position) {
-    // pthread_mutex_lock(&print_lock);
+    pthread_mutex_lock(&print_lock);
     switch(position) {
         case A:
             cout << "Visitor " << visitor->get_id() << " has arrived at A at time stamp " << get_time() << endl;
@@ -121,8 +127,14 @@ void print_step(visitor* visitor, zoo_position position) {
         case C:
             cout << "Visitor " << visitor->get_id() << " is at C (entered Gallery 1) at time " << get_time() << endl;
             break;
+        case D:
+            cout << "Visitor " << visitor->get_id() << " is at D (exiting Gallery 1) at time " << get_time() << endl;
+            break;
+        case E:
+            cout << "Visitor " << visitor->get_id() << " is at E (entered Gallery 2) at time " << get_time() << endl;
+            break;
     }
-    // pthread_mutex_unlock(&print_lock);
+    pthread_mutex_unlock(&print_lock);
 }
 
 void* simulate_visit(void* arg) {
@@ -150,9 +162,14 @@ void* simulate_visit(void* arg) {
     print_step(visitor, STEP3);
     sem_wait(&sem_C);
     pthread_mutex_unlock(&step3_lock);
-    usleep(10);
     print_step(visitor, C);
+    usleep(x);
+    sem_wait(&sem_D);
     sem_post(&sem_C);
+    print_step(visitor, D);
+    usleep(poisson_random_number(1, GALLARY1_CAPACITY));
+    print_step(visitor, E);
+    sem_post(&sem_D);
 
     return NULL;
 }
