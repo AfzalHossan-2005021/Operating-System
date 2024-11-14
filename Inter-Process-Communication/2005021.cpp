@@ -1,19 +1,39 @@
 #include <iostream>
 #include <random>
-#include<pthread.h>
-#include<unistd.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <chrono>
+#include <semaphore.h>
 
 #define STARTING_STANDARD_TICKET 1001
 #define STARTING_PREMIUM_TICKET 2001
+#define GALLARY1_CAPACITY 5
 
 using namespace std;
 
 int N, M, w, x, y, z;
 
-enum visitor_type {
-    STANDARD = 1,
-    PREMIUM = 2
+enum zoo_position {
+    A,
+    B,
+    STEP1,
+    STEP2,
+    STEP3,
+    C
 };
+
+
+
+// Define the mutex locks
+pthread_mutex_t print_lock;
+pthread_mutex_t A_lock;
+pthread_mutex_t B_lock;
+pthread_mutex_t step1_lock;
+pthread_mutex_t step2_lock;
+pthread_mutex_t step3_lock;
+
+sem_t sem_C;
+
 
 // Generate a random number using the Poisson distribution
 int poisson_random_number(int start, int end) {
@@ -40,37 +60,107 @@ int poisson_random_number(int start, int end) {
 }
 
 class visitor {
-    private:
-        int ticket_number;
-        enum visitor_type visitor_type;
-    public:
-        visitor(int ticket_number, enum visitor_type visitor_type) {
-            this->ticket_number = ticket_number;
-            this->visitor_type = visitor_type;
-        }
-
-        int get_ticket_number() {
-            return ticket_number;
-        }
-
-        enum visitor_type get_visitor_type() {
-            return visitor_type;
-        }
+private:
+    int id;
+public:
+    visitor(int id) {
+        this->id = id;
+    }
+    int get_id() {
+        return id;
+    }
 };
+
+void init_lock() {
+    pthread_mutex_init(&print_lock, NULL);
+    pthread_mutex_init(&A_lock, NULL);
+    pthread_mutex_init(&B_lock, NULL);
+    pthread_mutex_init(&step1_lock, NULL);
+    pthread_mutex_init(&step2_lock, NULL);
+    pthread_mutex_init(&step3_lock, NULL);
+    sem_init(&sem_C, 0, GALLARY1_CAPACITY);
+}
+
+void destroy_lock() {
+    pthread_mutex_destroy(&print_lock);
+    pthread_mutex_destroy(&A_lock);
+    pthread_mutex_destroy(&B_lock);
+    pthread_mutex_destroy(&step1_lock);
+    pthread_mutex_destroy(&step2_lock);
+    pthread_mutex_destroy(&step3_lock);
+    sem_destroy(&sem_C);
+}
+
+auto start_time = std::chrono::high_resolution_clock::now();
+
+long long get_time() {
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+  long long elapsed_time_ms = duration.count();
+  return elapsed_time_ms;
+}
+
+void print_step(visitor* visitor, zoo_position position) {
+    // pthread_mutex_lock(&print_lock);
+    switch(position) {
+        case A:
+            cout << "Visitor " << visitor->get_id() << " has arrived at A at time stamp " << get_time() << endl;
+            break;
+        case B:
+            cout << "Visitor " << visitor->get_id() << " has arrived at B at time stamp " << get_time() << endl;
+            break;
+        case STEP1:
+            cout << "Visitor " << visitor->get_id() << " is at step 1 at time stamp " << get_time() << endl;
+            break;
+        case STEP2:
+            cout << "Visitor " << visitor->get_id() << " is at step 2 at time stamp " << get_time() << endl;
+            break;
+        case STEP3:
+            cout << "Visitor " << visitor->get_id() << " is at step 3 at time stamp " << get_time() << endl;
+            break;
+        case C:
+            cout << "Visitor " << visitor->get_id() << " is at C (entered Gallery 1) at time " << get_time() << endl;
+            break;
+    }
+    // pthread_mutex_unlock(&print_lock);
+}
 
 void* simulate_visit(void* arg) {
     visitor* visitor = (class visitor*) arg;
-    int random_number = poisson_random_number(1, N + M);
-    usleep(random_number);
-    int ticket_number = visitor->get_ticket_number();
-    cout << ticket_number << endl;
+    // Add random delays before a visitor steps into the hallway AB to achieve randomness
+    usleep(poisson_random_number(1, N + M));
+
+    pthread_mutex_lock(&A_lock);
+    print_step(visitor, A);
+    pthread_mutex_lock(&B_lock);
+    pthread_mutex_unlock(&A_lock);
+    usleep(w);
+    print_step(visitor, B);
+    pthread_mutex_lock(&step1_lock);
+    pthread_mutex_unlock(&B_lock);
+    usleep(10);
+    print_step(visitor, STEP1);
+    pthread_mutex_lock(&step2_lock);
+    pthread_mutex_unlock(&step1_lock);
+    usleep(10);
+    print_step(visitor, STEP2);
+    pthread_mutex_lock(&step3_lock);
+    pthread_mutex_unlock(&step2_lock);
+    usleep(10);
+    print_step(visitor, STEP3);
+    sem_wait(&sem_C);
+    pthread_mutex_unlock(&step3_lock);
+    usleep(10);
+    print_step(visitor, C);
+    sem_post(&sem_C);
+
     return NULL;
 }
 
 void* simulate_standard_visitor_entry(void* arg) {
     visitor* standard_visitors[N];
     for(int i = 0; i < N; i++) {
-        standard_visitors[i] = new visitor(STARTING_STANDARD_TICKET + i, STANDARD);
+        standard_visitors[i] = new visitor(STARTING_STANDARD_TICKET + i);
     }
     pthread_t standard_visitor_thread[N];
     for(int i = 0; i < N; i++) {
@@ -79,13 +169,17 @@ void* simulate_standard_visitor_entry(void* arg) {
     for(int i = 0; i < N; i++) {
         pthread_join(standard_visitor_thread[i], NULL);
     }
+    // free the memory allocated for the standard visitors
+    for(int i = 0; i < N; i++) {
+        delete standard_visitors[i];
+    }
     return NULL;
 }
 
 void* simulate_premium_visitor_entry(void* arg) {
     visitor* premium_visitors[M];
     for(int i = 0; i < M; i++) {
-        premium_visitors[i] = new visitor(STARTING_PREMIUM_TICKET + i, PREMIUM);
+        premium_visitors[i] = new visitor(STARTING_PREMIUM_TICKET + i);
     }
     pthread_t premium_visitor_thread[M];
     for(int i = 0; i < M; i++) {
@@ -93,6 +187,10 @@ void* simulate_premium_visitor_entry(void* arg) {
     }
     for(int i = 0; i < M; i++) {
         pthread_join(premium_visitor_thread[i], NULL);
+    }
+    // free the memory allocated for the premium visitors
+    for(int i = 0; i < M; i++) {
+        delete premium_visitors[i];
     }
     return NULL;
 }
@@ -118,6 +216,10 @@ int main(int argc, char* argv[]) {
     // Read w, x, y, z from the input
     cin >> w >> x >> y >> z;
 
+    // Initialize the locks
+    init_lock();
+
+    // Create the threads for the standard and premium visitors entry simulation
     pthread_t standard_visitor_entry_thread;
     pthread_t premium_visitor_entry_thread;
 
@@ -126,6 +228,9 @@ int main(int argc, char* argv[]) {
 
     pthread_join(standard_visitor_entry_thread, NULL);
     pthread_join(premium_visitor_entry_thread, NULL);
+
+    // Destroy the locks
+    destroy_lock();
     
     return 0;
 }
