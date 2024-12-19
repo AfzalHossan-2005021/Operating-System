@@ -17,30 +17,47 @@ This repository includes a submodule and a patch file that must be applied after
    ```
 
 3. **Apply the Patch File**:
-   Apply the singlecpu patch file using the following command:
+   Navigate to the `xv6-riscv` directory and apply the singlecpu patch file using the following command:
    ```bash
-   cd Scheduling
+   cd Scheduling/xv6-riscv
    git apply --whitespace=fix ../2005021_singlecpu.patch
    ```
 
    or
 
-   Apply the multicpu patch file using the following command:
+   Navigate to the `xv6-riscv` directory and apply the multicpu patch file using the following command:
    ```bash
-   cd Scheduling
+   cd Scheduling/xv6-riscv
    git apply --whitespace=fix ../2005021_multicpu.patch
    ```
 
    Ensure the `.patch` file is located in the parent directory of the repository.
 
 4. **Emulate xv6**:
-   Navigate to the `xv6-riscv` directory and start the emulator:
+   Start the emulator:
    ```bash
-   cd xv6-riscv
    make qemu
    ```
 
-5. **Terminate the Emulator**:
+5. **Show log**:
+   To show log, use the following command:
+   ```
+   showlog
+   ```
+
+6. **Hide log**:
+   To hide log, use the following command:
+   ```
+   hidelog
+   ```
+
+7. **Test**:
+   To test, use the following command:
+   ```
+   dummyproc 10 1000000000 &; dummyproc 10 1000000000 &; testprocinfo
+   ```
+
+8. **Terminate the Emulator**:
    To terminate the emulator, use the following keyboard sequence:
    ```
    ctrl + a
