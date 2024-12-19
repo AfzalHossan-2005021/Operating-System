@@ -22,8 +22,8 @@ This repository includes a submodule and a patch file that must be applied after
    cd xv6-riscv
    git clean -fdx
    git reset --hard
-   git apply --whitespace=fix ../System-call/2005021.patch
-   ```
+   git apply --whitespace=fix ../System-call/Offline/2005021.patch
+   ```  
 
 4. **Emulate xv6**:
    Start the emulator:
