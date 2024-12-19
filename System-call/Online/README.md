@@ -19,21 +19,56 @@ This repository includes a submodule and a patch file that must be applied after
 3. **Apply the Patch File**:
    Apply the provided patch file using the following command:
    ```bash
-   cd System-call
-   git apply --whitespace=fix ../2005021.patch
-   ```
-
-   Ensure the `2005021.patch` file is located in the parent directory of the repository.
-
+   cd xv6-riscv
+   git apply --whitespace=fix ../System-call/Online/2005021.patch
+   ```  
 
 4. **Emulate xv6**:
    Navigate to the `xv6-riscv` directory and start the emulator:
    ```bash
-   cd xv6-riscv
    make qemu
    ```
 
-5. **Terminate the Emulator**:
+5. **Test**:
+   To test, use the following commands:
+   ```
+   seed 2
+   ```  
+   Output:  
+   The seed has been set to 2  
+   
+   ```
+   next 2
+   ```  
+   Output:  
+   Next random numbers are [3, 4]  
+
+   ```
+   next 3
+   ```  
+   Output:  
+   Next random numbers are [5, 6, 7]  
+
+   ```
+   seed 12
+   ```  
+   Output:  
+   The seed has been set to 12  
+
+   ```
+   next 1
+   ```  
+   Output:  
+   Next random numbers are [13]  
+
+   ```
+   next 4
+   ```  
+   Output:  
+   Next random numbers are [14, 15, 16, 17]  
+   
+
+6. **Terminate the Emulator**:
    To terminate the emulator, use the following keyboard sequence:
    ```
    ctrl + a
