@@ -1,0 +1,62 @@
+# Repository Setup Instructions
+
+This repository includes a submodule and a patch file that must be applied after cloning. Follow the steps below to set up the repository correctly.
+
+## Steps to Clone and Set Up
+
+1. **Clone the Repository**:
+   ```bash
+   git clone <repository-url>
+   ```
+
+2. **Initialize and Update Submodules**:
+   Navigate to the cloned repository's directory and initialize the submodules:
+   ```bash
+   cd <repository-name>
+   git submodule update --init --recursive
+   ```
+
+3. **Apply the Patch File**:
+   Apply the singlecpu patch file using the following command:
+   ```bash
+   git apply --whitespace=fix ../2005021_singlecpu.patch
+   ```
+
+   or
+
+   Apply the multicpu patch file using the following command:
+   ```bash
+   git apply --whitespace=fix ../2005021_multicpu.patch
+   ```
+
+   Ensure the `.patch` file is located in the parent directory of the repository.
+
+4. **Emulate xv6**:
+   Navigate to the `xv6-riscv` directory and start the emulator:
+   ```bash
+   cd xv6-riscv
+   make qemu
+   ```
+
+5. **Terminate the Emulator**:
+   To terminate the emulator, use the following keyboard sequence:
+   ```
+   ctrl + a
+   x
+   ```
+
+## Notes
+
+- If you encounter issues while applying the patch, verify the patch file's location and ensure it is compatible with the current state of the repository.
+- Use `git status` to confirm that the patch was successfully applied.
+
+## Additional Commands
+
+- To check the status of submodules:
+  ```bash
+  git submodule status
+  ```
+- To update submodules to the latest commit:
+  ```bash
+  git submodule update --remote
+  ```
