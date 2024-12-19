@@ -1,0 +1,3 @@
+[submodule "Threading/xv6-riscv"]
+	path = Threading/xv6-riscv
+	url = https://github.com/AfzalHossan-2005021/xv6-riscv.git
