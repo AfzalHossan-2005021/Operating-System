@@ -7,3 +7,6 @@
 [submodule "System-call/xv6-riscv"]
 	path = System-call/xv6-riscv
 	url = https://github.com/AfzalHossan-2005021/xv6-riscv.git
+[submodule "xv6-riscv"]
+	path = xv6-riscv
+	url = https://github.com/AfzalHossan-2005021/xv6-riscv.git
