@@ -1,0 +1,213 @@
+diff --git a/Makefile b/Makefile
+index 62fd0f8..10c239c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -132,7 +132,9 @@ UPROGS=\
+ 	$U/_ln\
+ 	$U/_ls\
+ 	$U/_mkdir\
++	$U/_next\
+ 	$U/_rm\
++	$U/_seed\
+ 	$U/_sh\
+ 	$U/_stressfs\
+ 	$U/_usertests\
+diff --git a/kernel/defs.h b/kernel/defs.h
+index d1b6bb9..5e45295 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -106,6 +106,7 @@ void            yield(void);
+ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
+ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
+ void            procdump(void);
++int             getRandomNumber(void);
+ 
+ // swtch.S
+ void            swtch(struct context*, struct context*);
+diff --git a/kernel/proc.c b/kernel/proc.c
+index 58a8a0b..79b3454 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -20,6 +20,8 @@ static void freeproc(struct proc *p);
+ 
+ extern char trampoline[]; // trampoline.S
+ 
++int seed_val = 0;
++
+ // helps ensure that wakeups of wait()ing
+ // parents are not lost. helps obey the
+ // memory model when using p->parent.
+@@ -686,3 +688,8 @@ procdump(void)
+     printf("\n");
+   }
+ }
++
++int getRandomNumber(){
++  seed_val++;
++  return seed_val;
++}
+\ No newline at end of file
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..c8a35b5 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -105,3 +105,7 @@ struct proc {
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
+ };
++
++struct Arr {
++    int num[15];
++};
+\ No newline at end of file
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..7bef333 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -101,6 +101,9 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_setSeed(void);
++extern uint64 sys_getRandomNumbers(void);
++
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,6 +129,8 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_setSeed] sys_setSeed,
++[SYS_getRandomNumbers] sys_getRandomNumbers,
+ };
+ 
+ void
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..4f48ab1 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,5 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_setSeed 22
++#define SYS_getRandomNumbers 23
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..bad71f9 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -91,3 +91,26 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++uint64
++sys_setSeed(void){
++  int n;
++  argint(0, &n);
++  extern int seed_val;
++  seed_val = n;
++  return 0;
++}
++
++uint64
++sys_getRandomNumbers(void){
++  int n;
++  uint64 addr;
++  argint(0, &n);
++  argaddr(1, &addr);
++  struct Arr* arr = kalloc();
++  for(int i = 0; i < n; i++){
++    arr->num[i] = getRandomNumber();
++  }
++  copyout(myproc()->pagetable, addr, (char*)arr, sizeof(struct Arr));
++  return 0;
++}
+\ No newline at end of file
+diff --git a/user/next.c b/user/next.c
+new file mode 100644
+index 0000000..b39d590
+--- /dev/null
++++ b/user/next.c
+@@ -0,0 +1,28 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++struct Arr {
++    int num[15];
++};
++
++int
++main(int argc, char **argv)
++{
++  int i;
++  if(argc < 2){
++    fprintf(2, "usage: kill pid...\n");
++    exit(1);
++  }
++  i = atoi(argv[1]);
++  struct Arr* arr = malloc(sizeof(struct Arr));
++  getRandomNumbers(i, arr);
++  fprintf(2, "Next random numbers are [");
++  int k;
++  for(k = 0; k < i - 1; k++){
++    fprintf(2, "%d, ", arr->num[k]);
++  }
++  fprintf(2, "%d", arr->num[k]);
++  fprintf(2, "]\n");
++  exit(0);
++}
+diff --git a/user/seed.c b/user/seed.c
+new file mode 100644
+index 0000000..43a5b1b
+--- /dev/null
++++ b/user/seed.c
+@@ -0,0 +1,17 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++int
++main(int argc, char **argv)
++{
++  int i;
++  if(argc < 2){
++    fprintf(2, "usage: kill pid...\n");
++    exit(1);
++  }
++  i = atoi(argv[1]);
++  setSeed(i);
++  fprintf(2, "The seed has been set to %d\n", i);
++  exit(0);
++}
+diff --git a/user/user.h b/user/user.h
+index 04013ca..7facb4e 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -1,4 +1,5 @@
+ struct stat;
++struct Arr;
+ 
+ // system calls
+ int fork(void);
+@@ -22,6 +23,8 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int setSeed(int seed);
++int getRandomNumbers(int n, struct Arr *);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..787a8cd 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,5 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("setSeed");
++entry("getRandomNumbers");
