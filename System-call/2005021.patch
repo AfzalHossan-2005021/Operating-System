@@ -1,0 +1,849 @@
+diff --git a/Makefile b/Makefile
+index 62fd0f8..918770f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -130,11 +130,13 @@ UPROGS=\
+ 	$U/_init\
+ 	$U/_kill\
+ 	$U/_ln\
++	$U/_load\
+ 	$U/_ls\
+ 	$U/_mkdir\
+ 	$U/_rm\
+ 	$U/_sh\
+ 	$U/_stressfs\
++	$U/_trace\
+ 	$U/_usertests\
+ 	$U/_grind\
+ 	$U/_wc\
+diff --git a/kernel/defs.h b/kernel/defs.h
+index d1b6bb9..61147cc 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -77,7 +77,7 @@ int             piperead(struct pipe*, uint64, int);
+ int             pipewrite(struct pipe*, uint64, int);
+ 
+ // printf.c
+-int            printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
++int             printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
+ void            panic(char*) __attribute__((noreturn));
+ void            printfinit(void);
+ 
+@@ -106,6 +106,8 @@ void            yield(void);
+ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
+ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
+ void            procdump(void);
++void            acquireUserLock(void);
++void            releaseUserLock(void);
+ 
+ // swtch.S
+ void            swtch(struct context*, struct context*);
+diff --git a/kernel/main.c b/kernel/main.c
+index f0d3171..6cad780 100644
+--- a/kernel/main.c
++++ b/kernel/main.c
+@@ -3,9 +3,28 @@
+ #include "memlayout.h"
+ #include "riscv.h"
+ #include "defs.h"
++#include "userlock.h"
+ 
+ volatile static int started = 0;
+ 
++volatile struct userlock *user_lock;
++
++void
++init_user_lock()
++{
++  user_lock = (struct userlock *)kalloc();
++  if (user_lock == 0){
++    panic("Unable to allocate memory for user_lock");
++  }
++  user_lock->lk = (struct spinlock *)kalloc();
++  if (user_lock->lk == 0){
++    kfree((struct userlock *)user_lock);
++    panic("Unable to allocate memory for spinlock");
++  }
++  initlock(user_lock->lk, "user_lock");
++  user_lock->locked = 0;
++}
++
+ // start() jumps here in supervisor mode on all CPUs.
+ void
+ main()
+@@ -30,6 +49,7 @@ main()
+     virtio_disk_init(); // emulated hard disk
+     userinit();      // first user process
+     __sync_synchronize();
++    init_user_lock();
+     started = 1;
+   } else {
+     while(started == 0)
+diff --git a/kernel/param.h b/kernel/param.h
+index 6624bff..3646e11 100644
+--- a/kernel/param.h
++++ b/kernel/param.h
+@@ -9,5 +9,6 @@
+ #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
+ #define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+-#define FSSIZE       2000  // size of file system in blocks
+-#define MAXPATH      128   // maximum file path name
++#define FSSIZE     2000  // size of file system in blocks
++#define MAXPATH     128  // maximum file path name
++#define MAXCMDLEN   100  // maximum command length
+diff --git a/kernel/proc.c b/kernel/proc.c
+index 58a8a0b..c7e7a5f 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -5,6 +5,7 @@
+ #include "spinlock.h"
+ #include "proc.h"
+ #include "defs.h"
++#include "userlock.h"
+ 
+ struct cpu cpus[NCPU];
+ 
+@@ -12,6 +13,9 @@ struct proc proc[NPROC];
+ 
+ struct proc *initproc;
+ 
++struct userCmd *userCmdList;
++int currentCmdIndex = 0;
++
+ int nextpid = 1;
+ struct spinlock pid_lock;
+ 
+@@ -26,6 +30,9 @@ extern char trampoline[]; // trampoline.S
+ // must be acquired before any p->lock.
+ struct spinlock wait_lock;
+ 
++// import from main.c
++extern struct userlock *user_lock;
++
+ // Allocate a page for each process's kernel stack.
+ // Map it high in memory, followed by an invalid
+ // guard page.
+@@ -380,6 +387,8 @@ exit(int status)
+ 
+   release(&wait_lock);
+ 
++  p->trace_syscall_num = 0; // Reset trace_syscall_num
++
+   // Jump into the scheduler, never to return.
+   sched();
+   panic("zombie exit");
+@@ -686,3 +695,31 @@ procdump(void)
+     printf("\n");
+   }
+ }
++
++// Acquire userLock
++void
++acquireUserLock(void)
++{
++  // Try until the lock is acquired by the current process
++  acquire(user_lock->lk);  // Enter critical section
++  // user_lock->locked is critical section because it is shared among all processes
++  while (user_lock->locked) {
++    release(user_lock->lk);  // release and try again
++    acquire(user_lock->lk);
++  }
++  // Acquire the lock
++  user_lock->locked = 1;
++  release(user_lock->lk);  // Exit critical section
++}
++
++// Release userLock
++void
++releaseUserLock(void)
++{
++  acquire(user_lock->lk);  // Enter critical section
++  // Release the lock
++  if (user_lock->locked) {
++    user_lock->locked = 0;
++  }
++  release(user_lock->lk);  // Exit critical section
++}
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..2a7d94b 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -104,4 +104,21 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++
++  // syscall number to trace
++  int trace_syscall_num;
++};
++
++// Struct to hold process information
++struct procInfo {
++  int activeProcess;  // # of processes in RUNNABLE and RUNNING state
++  int totalProcess;   // # of total possible processes
++  int memsize;        // in bytes; summation of all active process
++  int totalMemSize;   // in bytes; all available physical Memory
++};
++
++// Struct to hold user commands
++struct userCmd {
++  char *cmd;
++  struct userCmd *prev;
+ };
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..09ed91e 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -101,6 +101,12 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_trace(void); // Added for tracing
++extern uint64 sys_info(void); // Added for info
++extern uint64 sys_set_last_used_cmd(void); // Added for setting user last command
++extern uint64 sys_get_recent_used_cmd(void); // Added for getting user last command
++extern uint64 sys_acquire_lock(void); // Added for acquiring lock
++extern uint64 sys_release_lock(void); // Added for releasing lock
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,8 +132,170 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_trace]   sys_trace, // Added for tracing
++[SYS_info]    sys_info, // Added for info
++[SYS_set_last_used_cmd] sys_set_last_used_cmd, // Added for setting user last command
++[SYS_get_recent_used_cmd] sys_get_recent_used_cmd, // Added for getting user last command
++[SYS_acquire_lock] sys_acquire_lock, // Added for acquiring lock
++[SYS_release_lock] sys_release_lock, // Added for releasing lock
+ };
+ 
++// Array of system call names.
++char *syscalls_names[] = {
++  [SYS_fork]    "fork",
++  [SYS_exit]    "exit",
++  [SYS_wait]    "wait",
++  [SYS_pipe]    "pipe",
++  [SYS_read]    "read",
++  [SYS_kill]    "kill",
++  [SYS_exec]    "exec",
++  [SYS_fstat]   "fstat",
++  [SYS_chdir]   "chdir",
++  [SYS_dup]     "dup",
++  [SYS_getpid]  "getpid",
++  [SYS_sbrk]    "sbrk",
++  [SYS_sleep]   "sleep",
++  [SYS_uptime]  "uptime",
++  [SYS_open]    "open",
++  [SYS_write]   "write",
++  [SYS_mknod]   "mknod",
++  [SYS_unlink]  "unlink",
++  [SYS_link]    "link",
++  [SYS_mkdir]   "mkdir",
++  [SYS_close]   "close",
++  [SYS_trace]   "trace", // Added for tracing
++  [SYS_info]    "info", // Added for info
++  [SYS_set_last_used_cmd] "set_last_used_cmd", // Added for setting user last command
++  [SYS_get_recent_used_cmd] "get_last_used_cmd", // Added for getting user last command
++  [SYS_acquire_lock] "acquire_lock", // Added for acquiring lock
++  [SYS_release_lock] "release_lock", // Added for releasing lock
++};
++
++// print syscall info if the syscall number is the same as the trace_syscall_num
++// print the pid, syscall name, arguments, and return value
++// e.g. pid: 4, syscall: read, args: (3, 0x0000000000001010, 1023), return: 1023
++void
++print_syscall_info(struct proc *p, int num)
++{
++  if(num == SYS_fork){
++    return;
++  } else if(num == SYS_exit){
++    int n;
++    argint(0, &n);
++    printf("%d", n);
++    printf("), return: 0\n");
++  } else if(num == SYS_wait){
++    uint64 p;
++    argaddr(0, &p);
++    printf("%p", (void*)p);
++  } else if(num == SYS_pipe){
++    uint64 fdarray;
++    argaddr(0, &fdarray);
++    printf("%p", (void*)fdarray);
++  } else if(num == SYS_read){
++    int fd, n;
++    uint64 p;
++    argint(0, &fd);
++    argaddr(1, &p);
++    argint(2, &n);
++    printf("%d, %p, %d", fd, (void*)p, n);
++  } else if(num == SYS_kill){
++    int pid;
++    argint(0, &pid);
++    printf("%d", pid);
++  } else if(num == SYS_exec){
++    char path[MAXPATH];
++    uint64 uargv;
++    argstr(0, path, MAXPATH);
++    argaddr(1, &uargv);
++    printf("%s, %p", path, (void*)uargv);
++  } else if(num == SYS_fstat){
++    int fd;
++    uint64 st;
++    argint(0, &fd);
++    argaddr(1, &st);
++    printf("%d, %p", fd, (void*)st);
++  } else if(num == SYS_chdir){
++    char path[MAXPATH];
++    argstr(0, path, MAXPATH);
++    printf("%s", path);
++  } else if(num == SYS_dup){
++    int fd;
++    argint(0, &fd);
++    printf("%d", fd);
++  } else if(num == SYS_getpid){
++    return;
++  } else if(num == SYS_sbrk){
++    int n;
++    argint(0, &n);
++    printf("%d", n);
++  } else if(num == SYS_sleep){
++    int n;
++    argint(0, &n);
++    printf("%d", n);
++  } else if(num == SYS_uptime){
++    return;
++  } else if(num == SYS_open){
++    char path[MAXPATH];
++    int omode;
++    argstr(0, path, MAXPATH);
++    argint(1, &omode);
++    printf("%s, %d", path, omode);
++  } else if(num == SYS_write){
++    int fd;
++    uint64 p;
++    int n;
++    argint(0, &fd);
++    argaddr(1, &p);
++    argint(2, &n);
++    printf("%d, %p, %d", fd, (void*)p, n);
++  } else if(num == SYS_mknod){
++    char path[MAXPATH];
++    int major, minor;
++    argstr(0, path, MAXPATH);
++    argint(1, &major);
++    argint(2, &minor);
++    printf("%s, %d, %d", path, major, minor);
++  } else if(num == SYS_unlink){
++    char path[MAXPATH];
++    argstr(0, path, MAXPATH);
++    printf("%s", path);
++  } else if(num == SYS_link){
++    char oldname[MAXPATH], newname[MAXPATH];
++    argstr(0, oldname, MAXPATH);
++    argstr(1, newname, MAXPATH);
++    printf("%s, %s", oldname, newname);
++  } else if(num == SYS_mkdir){
++    char path[MAXPATH];
++    argstr(0, path, MAXPATH);
++    printf("%s", path);
++  } else if(num == SYS_close){
++    int fd;
++    argint(0, &fd);
++    printf("%d", fd);
++  } else if(num == SYS_trace){
++    int sysnum;
++    argint(0, &sysnum);
++    printf("%d", sysnum);
++  } else if(num == SYS_info){
++    uint64 p;
++    argaddr(0, &p);
++    printf("%p", (void*)p);
++  } else if(num == SYS_set_last_used_cmd){
++    char cmd[MAXCMDLEN];
++    argstr(0, cmd, MAXCMDLEN);
++    printf("%s", cmd);
++  } else if(num == SYS_get_recent_used_cmd){
++    int index;
++    argint(0, &index);
++    printf("%d", index);
++  } else if(num == SYS_acquire_lock){
++    return;
++  } else if(num == SYS_release_lock){
++    return;
++  }
++}
++
+ void
+ syscall(void)
+ {
+@@ -138,7 +306,14 @@ syscall(void)
+   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+     // Use num to lookup the system call function for num, call it,
+     // and store its return value in p->trapframe->a0
+-    p->trapframe->a0 = syscalls[num]();
++    if(num == p->trace_syscall_num){
++      printf("pid: %d, syscall: %s, args: (", p->pid, syscalls_names[num]);
++      print_syscall_info(p, num);
++      p->trapframe->a0 = syscalls[num]();
++      printf("), return: %ld\n", p->trapframe->a0);
++    } else {
++      p->trapframe->a0 = syscalls[num]();
++    }
+   } else {
+     printf("%d %s: unknown sys call %d\n",
+             p->pid, p->name, num);
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..f7de407 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,9 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_trace  22 // Added for tracing
++#define SYS_info   23 // Added for info
++#define SYS_set_last_used_cmd 24 // Added for setting user last command
++#define SYS_get_recent_used_cmd 25 // Added for getting user last command
++#define SYS_acquire_lock 26 // Added for acquiring lock
++#define SYS_release_lock 27 // Added for releasing lock
+\ No newline at end of file
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..aa3bc9a 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -91,3 +91,100 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++// Added for tracing
++uint64
++sys_trace(void)
++{
++  int syscall_num;
++  argint(0, &syscall_num);
++  myproc()->trace_syscall_num = syscall_num;
++  return 0;
++}
++
++// Added for info
++uint64
++sys_info(void)
++{
++  uint64 infoAddr;
++  argaddr(0, &infoAddr);
++  struct procInfo *procInfoPtr = kalloc();
++  struct proc *p;
++  procInfoPtr->activeProcess = 0;
++  procInfoPtr->memsize = 0;
++  extern struct proc proc[NPROC];
++  for(p = proc; p < &proc[NPROC]; p++){
++    acquire(&p->lock);
++    if(p->state == RUNNABLE || p->state == RUNNING) {
++      procInfoPtr->activeProcess++;
++      procInfoPtr->memsize += p->sz;
++    }
++    release(&p->lock);
++  }
++  procInfoPtr->totalProcess = NPROC;
++  procInfoPtr->totalMemSize = PHYSTOP - KERNBASE;
++  return copyout(myproc()->pagetable, infoAddr, (char *)procInfoPtr, sizeof(*procInfoPtr));
++}
++
++// Added for last used command
++uint64
++sys_set_last_used_cmd(void)
++{
++  char command[MAXCMDLEN];
++  argstr(0, command, MAXCMDLEN);
++  struct userCmd *userCmdPtr = kalloc();
++  userCmdPtr->cmd = kalloc();
++  safestrcpy(userCmdPtr->cmd, command, MAXCMDLEN);
++  extern struct userCmd *userCmdList;
++  extern int currentCmdIndex;
++
++  // Handle the case where two processes simultaneously tries to update the last command
++  acquireUserLock();  // Acquire user lock
++  userCmdPtr->prev = userCmdList;
++  userCmdList = userCmdPtr;
++  currentCmdIndex++;
++  releaseUserLock();  // Release user lock
++  return 0;
++}
++
++uint64
++sys_get_recent_used_cmd(void)
++{
++  int index;
++  uint64 straddr;
++  argint(0, &index);
++  argaddr(1, &straddr);
++  extern struct userCmd *userCmdList;
++  extern int currentCmdIndex;
++  if(index > currentCmdIndex) {
++    return -1;
++  }
++
++  // Handle the case where two processes simultaneously tries to read the last command
++  acquireUserLock();  // Acquire user lock
++  struct userCmd *userCmdPtr = userCmdList;
++  for(int i = 1; i < index; i++) {
++    if(userCmdPtr->prev == 0) {
++      return 0;
++    }
++    userCmdPtr = userCmdPtr->prev;
++  }
++  releaseUserLock();  // Release user lock
++  return copyout(myproc()->pagetable, straddr, userCmdPtr->cmd, strlen(userCmdPtr->cmd));
++}
++
++// Added for acquiring lock
++uint64
++sys_acquire_lock(void)
++{
++  acquireUserLock();  // Acquire user lock
++  return 0;
++}
++
++// Added for releasing lock
++uint64
++sys_release_lock(void)
++{
++  releaseUserLock();  // Release user lock
++  return 0;
++}
+\ No newline at end of file
+diff --git a/kernel/userlock.h b/kernel/userlock.h
+new file mode 100644
+index 0000000..29d9cc1
+--- /dev/null
++++ b/kernel/userlock.h
+@@ -0,0 +1,5 @@
++// Struct to hold user lock
++struct userlock {
++  struct spinlock *lk;  // Use a spinlock or sleeplock
++  int locked;           // State of the lock: 0 (unlocked) or 1 (locked)
++};
+diff --git a/user/load.c b/user/load.c
+new file mode 100644
+index 0000000..430b99f
+--- /dev/null
++++ b/user/load.c
+@@ -0,0 +1,142 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++const int BYTES_IN_MB = 1024 * 1024;
++
++// Struct to hold process information
++struct procInfo {
++    int activeProcess;  // # of processes in RUNNABLE and RUNNING state
++    int totalProcess;   // # of total possible processes
++    int memsize;        // in bytes; summation of all active process
++    int totalMemSize;   // in bytes; all available physical Memory
++};
++
++// Check if the character is a digit
++int is_digit(char c)
++{
++    return c >= '0' && c <= '9';
++}
++
++int is_number(const char *str)
++{
++    // Handle empty string and strings with 0
++    if (*str == '\0' || *str == '0') {
++        return 0; // Return false for empty strings and strings with 0
++    }
++
++    // Iterate through each character of the string
++    while (*str) {
++        // If the character is not a digit, return false
++        if (!is_digit(*str)) {
++            return 0;
++        }
++        str++;
++    }
++
++    // If all characters are digits, return true
++    return 1;
++}
++
++int main(int argc, char *argv[])
++{
++    // Check if the number of arguments is correct
++    if (argc < 3)
++    {
++        fprintf(2, "Usage: load <childCount> <allocation-amount>\n");
++        exit(1);
++    }
++
++    // Check if the childCount is a number
++    if (!is_number(argv[1]))
++    {
++        fprintf(2, "ERROR: Given <childCount> is non-numeric.\n");
++        exit(1);
++    }
++
++    // Check if the allocation-amount is a number
++    if (!is_number(argv[2]))
++    {
++        fprintf(2, "ERROR: Given <allocation-amount> is non-numeric.\n");
++        exit(1);
++    }
++
++    // Get the childCount and allocation-amount
++    int childCount = atoi(argv[1]);
++    if(childCount < 1 || childCount > 63)
++    {
++        fprintf(2, "ERROR: Invalid <childCount>.\n");
++        exit(1);
++    }
++    int allocationAmount = atoi(argv[2]);
++    if(allocationAmount < 1 || allocationAmount > 128 * BYTES_IN_MB)
++    {
++        fprintf(2, "ERROR: Invalid <allocation-amount>.\n");
++        exit(1);
++    }
++
++    int mainPid = getpid();
++    int pid = 0;
++
++    acquire_lock();
++
++    // Create childCount number of child forked processes
++    for(int i = 0; i < childCount; i++)
++    {
++        pid = fork();
++        if(pid < 0){
++            acquire_lock();
++            printf("Error: Fork failed.\n");
++            release_lock();
++        } else if(pid == 0){
++            break;
++        }
++    }
++    if(mainPid != getpid()){
++        acquire_lock();
++        printf("Child process created.\n");
++        char *mem = (char *)malloc(allocationAmount);
++        int count = __INT_MAX__;
++        if(mem == 0){
++            printf("Error: Memory allocation failed.\n");
++            printf("Child going to sleep.\n");
++            release_lock();
++            while(count--);
++        } else {
++            printf("Child allocated %d byte.\n", allocationAmount);
++            printf("Child going to sleep.\n");
++            release_lock();
++            while(count--);
++            free(mem);
++        }
++    } else {
++        printf("Parent going to sleep.\n");
++        release_lock();
++        // int totalChildCount = (1 << childCount) - 1;
++        int totalChildCount = childCount;
++        sleep(totalChildCount--);
++        acquire_lock();
++        // Create a struct to hold process information and allocate memory for it
++        struct procInfo *procInfoPtr = (struct procInfo *)malloc(sizeof(struct procInfo));
++        // Call the info system call to get the process information
++        if (info(procInfoPtr) < 0)
++        {
++            fprintf(2, "Error: info system call failed.\n");
++            release_lock();
++            exit(1);
++        }
++        release_lock();
++        for(int i = 0; i < totalChildCount; i++){
++            wait(0);
++        }
++        acquire_lock();
++        printf("Parent wake up.\n");
++        // Print the process information
++        printf("Current system information:\n");
++        printf("Processes: %d/%d\n", procInfoPtr->activeProcess, procInfoPtr->totalProcess);
++        printf("RAM : %d.%d/%d (in MB)\n", procInfoPtr->memsize/BYTES_IN_MB, procInfoPtr->memsize % BYTES_IN_MB, procInfoPtr->totalMemSize/BYTES_IN_MB);
++        release_lock();
++        free(procInfoPtr);
++    }
++    exit(0);
++}
+\ No newline at end of file
+diff --git a/user/sh.c b/user/sh.c
+index 836ebcb..7fb826f 100644
+--- a/user/sh.c
++++ b/user/sh.c
+@@ -131,6 +131,15 @@ runcmd(struct cmd *cmd)
+   exit(0);
+ }
+ 
++int digits(int n){
++  int d = 0;
++  while(n > 0){
++    n /= 10;
++    d++;
++  }
++  return d;
++}
++
+ int
+ getcmd(char *buf, int nbuf)
+ {
+@@ -158,6 +167,33 @@ main(void)
+ 
+   // Read and run input commands.
+   while(getcmd(buf, sizeof(buf)) >= 0){
++    if(buf[0] == '!' && buf[1] == '!'){
++      int n = 1;
++      if(buf[2] != '\n'){
++        if(buf[2] == ' '){
++          n = atoi(buf+3);
++          int len = strlen(buf+3);
++          if(len != digits(n) + 1){
++            fprintf(2, "Invalid command number\n");
++            continue;
++          }
++        } else {
++          fprintf(2, "Invalid command number\n");
++        }
++      }
++      if(n == 0){
++        fprintf(2, "Invalid command number\n");
++        continue;
++      }
++      char *tmp = (char*)malloc(100);
++      if(get_recent_used_cmd(n, tmp) < 0){
++        fprintf(2, "No commands in history\n");
++        continue;
++      }
++      strcpy(buf, tmp);
++      fprintf(2, "%s", buf);
++    }
++    set_last_used_cmd(buf);
+     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+       // Chdir must be called by the parent, not the child.
+       buf[strlen(buf)-1] = 0;  // chop \n
+diff --git a/user/trace.c b/user/trace.c
+new file mode 100644
+index 0000000..1b79182
+--- /dev/null
++++ b/user/trace.c
+@@ -0,0 +1,73 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++int is_digit(char c)
++{
++    return c >= '0' && c <= '9';
++}
++
++int is_number(const char *str)
++{
++    // Handle empty string and strings with 0
++    if (*str == '\0' || *str == '0') {
++        return 0; // Return false for empty strings and strings with 0
++    }
++
++    // Iterate through each character of the string
++    while (*str) {
++        // If the character is not a digit, return false
++        if (!is_digit(*str)) {
++            return 0;
++        }
++        str++;
++    }
++
++    // If all characters are digits, return true
++    return 1;
++}
++
++int main(int argc, char *argv[])
++{
++    // Check if the number of arguments is correct
++    if (argc < 3)
++    {
++        fprintf(2, "Usage: trace <syscall_num> <command>\n");
++        exit(1);
++    }
++
++    // Check if the syscall number is a number
++    if (!is_number(argv[1]))
++    {
++        fprintf(2, "ERROR: Given <syscall_num> is non-numeric.\n");
++        exit(1);
++    }
++
++    // Get the syscall number and check validity
++    int syscall_num = atoi(argv[1]);
++    if(syscall_num < 1 || syscall_num > 21)
++    {
++        fprintf(2, "ERROR: Invalid <syscall_num>.\n");
++        exit(1);
++    }
++
++    // Get the command name
++    char *command_name = (char *)malloc(strlen(argv[2]) + 1);
++    if (!command_name) {
++        fprintf(2, "Memory allocation failed!\n");
++        return 1;
++    }
++    strcpy(command_name, argv[2]);
++    // myproc()->trace_syscall_num = syscall_num;
++
++    // Get the command and arguments
++    char **command = argv + 2;
++
++    // Trace the syscall
++    trace(syscall_num);
++
++    // Execute the command
++    exec(command_name, command);
++    fprintf(2, "ERROR: Invalid commmand: %s\n", command_name);
++    exit(0);
++}
+\ No newline at end of file
+diff --git a/user/user.h b/user/user.h
+index 04013ca..1d26f38 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -1,4 +1,5 @@
+ struct stat;
++struct procInfo;
+ 
+ // system calls
+ int fork(void);
+@@ -22,6 +23,12 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int trace(int); // Added for tracing
++int info(struct procInfo*); // Added for info
++int set_last_used_cmd(const char*); // Added for setting user last command
++int get_recent_used_cmd(int, char*); // Added for getting user last command
++int acquire_lock(); // Added for acquiring lock
++int release_lock(); // Added for releasing lock
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..7cd964a 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,9 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("trace");
++entry("info");
++entry("set_last_used_cmd");
++entry("get_recent_used_cmd");
++entry("acquire_lock");
++entry("release_lock");
