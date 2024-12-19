@@ -41,7 +41,7 @@ This repository includes a submodule and a patch file that must be applied after
    Starting do_work: s:b2  
    Done s:b1  
    Done s:b2  
-   Threads finished: (10):10, (11):11, shared balance:6000  
+   Threads finished: (4):4, (5):5, shared balance:6000  
   
 
 6. **Terminate the Emulator**:
