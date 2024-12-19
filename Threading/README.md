@@ -37,10 +37,10 @@ This repository includes a submodule and a patch file that must be applied after
    threads
    ```
    Output:  
-   Starting do_work: s:b1
-   Starting do_work: s:b2
-   Done s:b1
-   Done s:b2
+   Starting do_work: s:b1  
+   Starting do_work: s:b2  
+   Done s:b1  
+   Done s:b2  
    Threads finished: (10):10, (11):11, shared balance:6000  
   
 
