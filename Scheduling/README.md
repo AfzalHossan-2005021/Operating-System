@@ -19,19 +19,17 @@ This repository includes a submodule and a patch file that must be applied after
 3. **Apply the Patch File**:
    Navigate to the `xv6-riscv` directory and apply the singlecpu patch file using the following command:
    ```bash
-   cd Scheduling/xv6-riscv
-   git apply --whitespace=fix ../2005021_singlecpu.patch
+   cd xv6-riscv
+   git apply --whitespace=fix ../Scheduling/2005021_singlecpu.patch
    ```
 
    or
 
    Navigate to the `xv6-riscv` directory and apply the multicpu patch file using the following command:
    ```bash
-   cd Scheduling/xv6-riscv
-   git apply --whitespace=fix ../2005021_multicpu.patch
+   cd xv6-riscv
+   git apply --whitespace=fix ../Scheduling/2005021_multicpu.patch
    ```
-
-   Ensure the `.patch` file is located in the parent directory of the repository.
 
 4. **Emulate xv6**:
    Start the emulator:

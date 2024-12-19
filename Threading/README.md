@@ -14,22 +14,20 @@ This repository includes a submodule and a patch file that must be applied after
    ```bash
    cd Operating-System
    git submodule update --init --recursive
-   ```
+   ```  
 
 3. **Apply the Patch File**:
    Navigate to the `xv6-riscv` directory and apply the patch file using the following command:
    ```bash
-   cd Threading/xv6-riscv
-   git apply --whitespace=fix ../2005021.patch
-   ```
-
-   Ensure the `.patch` file is located in the parent directory of the repository.
+   cd xv6-riscv
+   git apply --whitespace=fix ../Threading/2005021.patch
+   ```  
 
 4. **Emulate xv6**:
    Start the emulator:
    ```bash
    make qemu
-   ```
+   ```  
 
 5. **Test**:
    To test, use the following command:
