@@ -20,6 +20,8 @@ This repository includes a submodule and a patch file that must be applied after
    Apply the provided patch file using the following command:
    ```bash
    cd xv6-riscv
+   git clean -fdx
+   git reset --hard
    git apply --whitespace=fix ../System-call/Offline/2005021.patch
    ```  
 
