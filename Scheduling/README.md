@@ -6,19 +6,20 @@ This repository includes a submodule and a patch file that must be applied after
 
 1. **Clone the Repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/AfzalHossan-2005021/Operating-System.git
    ```
 
 2. **Initialize and Update Submodules**:
    Navigate to the cloned repository's directory and initialize the submodules:
    ```bash
-   cd <repository-name>
+   cd Operating-System
    git submodule update --init --recursive
    ```
 
 3. **Apply the Patch File**:
    Apply the singlecpu patch file using the following command:
    ```bash
+   cd Scheduling
    git apply --whitespace=fix ../2005021_singlecpu.patch
    ```
 
@@ -26,6 +27,7 @@ This repository includes a submodule and a patch file that must be applied after
 
    Apply the multicpu patch file using the following command:
    ```bash
+   cd Scheduling
    git apply --whitespace=fix ../2005021_multicpu.patch
    ```
 
