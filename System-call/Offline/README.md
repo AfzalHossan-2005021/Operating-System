@@ -17,7 +17,8 @@ This repository includes a submodule and a patch file that must be applied after
    ```
 
 3. **Apply the Patch File**:
-   Apply the provided patch file using the following command:
+
+   Navigate to the `xv6-riscv` directory and apply the provided patch file using the following command:
    ```bash
    cd xv6-riscv
    git clean -fdx
@@ -26,12 +27,69 @@ This repository includes a submodule and a patch file that must be applied after
    ```  
 
 4. **Emulate xv6**:
-   Navigate to the `xv6-riscv` directory and start the emulator:
+   Start the emulator:
    ```bash
    make qemu
    ```
 
-5. **Terminate the Emulator**:
+5. **Test**:
+   To rest, use the following commands and outputs:
+   ```
+   trace 15 grep hello README
+   ```
+   Output:  
+   pid: 3, syscall: open, args: (README, 0), return: 3  
+   
+   ```
+   grep hello README
+   ```
+   Output:  
+  
+   ```
+   trace 3 grep hello README
+   ```
+   Output:  
+  
+   ```
+   trace 5 grep hello README
+   ```
+   Output:  
+   pid: 6, syscall: read, args: (3, 0x0000000000001010, 1023), return: 1023  
+   pid: 6, syscall: read, args: (3, 0x000000000000104e, 961), return: 961  
+   pid: 6, syscall: read, args: (3, 0x0000000000001037, 984), return: 321  
+   pid: 6, syscall: read, args: (3, 0x0000000000001010, 1023), return: 0  
+  
+   ```
+   trace 21 grep hello README
+   ```
+   Output:  
+   pid: 7, syscall: close, args: (3), return: 0
+
+   ```
+   trace 7 echo hello
+   ```
+   Output:  
+   pid: 8, syscall: exec, args: (echo, 0x0000000000003fa0), return: 2
+   hello
+     
+   ```
+   load 2 2048
+   ```
+   Output:
+   Parent going to sleep.  
+   Child process created.  
+   Child allocated 2048 byte.  
+   Child going to sleep.  
+   Child process created.  
+   Child allocated 2048 byte.  
+   Child going to sleep.  
+   Parent wake up.  
+   Current system information:  
+   Processes: 3/64  
+   RAM : 0.245760/128 (in MB)  
+
+   
+6. **Terminate the Emulator**:
    To terminate the emulator, use the following keyboard sequence:
    ```
    ctrl + a
