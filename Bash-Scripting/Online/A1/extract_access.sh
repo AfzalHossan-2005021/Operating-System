@@ -34,5 +34,5 @@ done < "$log_file"
 # Extract usernames and count the number of times each username appears
 cut -d' ' -f3 < "$tmp_file" | sort | uniq -c | sort -rn
 
-Clean up temporary file
+# Clean up temporary file
 rm "$tmp_file"

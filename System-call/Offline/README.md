@@ -17,6 +17,7 @@ This repository includes a submodule and a patch file that must be applied after
    ```
 
 3. **Apply the Patch File**:
+
    Navigate to the `xv6-riscv` directory and apply the provided patch file using the following command:
    ```bash
    cd xv6-riscv
@@ -88,7 +89,7 @@ This repository includes a submodule and a patch file that must be applied after
    RAM : 0.245760/128 (in MB)  
 
    
-7. **Terminate the Emulator**:
+6. **Terminate the Emulator**:
    To terminate the emulator, use the following keyboard sequence:
    ```
    ctrl + a
