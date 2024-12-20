@@ -1,0 +1,226 @@
+diff --git a/Makefile b/Makefile
+index 62fd0f8..e0993a1 100644
+--- a/Makefile
++++ b/Makefile
+@@ -135,6 +135,7 @@ UPROGS=\
+ 	$U/_rm\
+ 	$U/_sh\
+ 	$U/_stressfs\
++	$U/_testloop\
+ 	$U/_usertests\
+ 	$U/_grind\
+ 	$U/_wc\
+@@ -160,7 +161,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
+ 	then echo "-gdb tcp::$(GDBPORT)"; \
+ 	else echo "-s -p $(GDBPORT)"; fi)
+ ifndef CPUS
+-CPUS := 3
++CPUS := 1
+ endif
+ 
+ QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+diff --git a/kernel/defs.h b/kernel/defs.h
+index d1b6bb9..9bb9e1a 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -106,6 +106,7 @@ void            yield(void);
+ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
+ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
+ void            procdump(void);
++int             setlength(int);
+ 
+ // swtch.S
+ void            swtch(struct context*, struct context*);
+diff --git a/kernel/param.h b/kernel/param.h
+index 6624bff..dc58abb 100644
+--- a/kernel/param.h
++++ b/kernel/param.h
+@@ -11,3 +11,4 @@
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+ #define FSSIZE       2000  // size of file system in blocks
+ #define MAXPATH      128   // maximum file path name
++#define DEFAULT_LEN  10
+diff --git a/kernel/proc.c b/kernel/proc.c
+index 58a8a0b..36e9a71 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -124,6 +124,7 @@ allocproc(void)
+ found:
+   p->pid = allocpid();
+   p->state = USED;
++  p->len = DEFAULT_LEN;
+ 
+   // Allocate a trapframe page.
+   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+@@ -447,6 +448,8 @@ scheduler(void)
+   struct proc *p;
+   struct cpu *c = mycpu();
+ 
++  
++
+   c->proc = 0;
+   for(;;){
+     // The most recent process to run may have had interrupts
+@@ -454,21 +457,33 @@ scheduler(void)
+     // processes are waiting.
+     intr_on();
+ 
++    struct proc *smallest = 0;
++
+     for(p = proc; p < &proc[NPROC]; p++) {
+       acquire(&p->lock);
+       if(p->state == RUNNABLE) {
++        if(smallest == 0 || smallest->len > p->len){
++          smallest = p;
++        }
++      }
++      release(&p->lock);
++    }
++
++    if(smallest){
++      acquire(&smallest->lock);
++      if(smallest->state == RUNNABLE) {
+         // Switch to chosen process.  It is the process's job
+         // to release its lock and then reacquire it
+         // before jumping back to us.
+-        p->state = RUNNING;
+-        c->proc = p;
+-        swtch(&c->context, &p->context);
++        smallest->state = RUNNING;
++        c->proc = smallest;
++        swtch(&c->context, &smallest->context);
+ 
+         // Process is done running for now.
+         // It should have changed its p->state before coming back.
+         c->proc = 0;
+       }
+-      release(&p->lock);
++      release(&smallest->lock);
+     }
+   }
+ }
+@@ -686,3 +701,12 @@ procdump(void)
+     printf("\n");
+   }
+ }
++
++
++int setlength(int len){
++  struct proc *p = myproc();
++  acquire(&p->lock);
++  p->len = len;
++  release(&p->lock);
++  return 0;
++}
+\ No newline at end of file
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..fbc5647 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -91,6 +91,7 @@ struct proc {
+   int killed;                  // If non-zero, have been killed
+   int xstate;                  // Exit status to be returned to parent's wait
+   int pid;                     // Process ID
++  int len;
+ 
+   // wait_lock must be held when using this:
+   struct proc *parent;         // Parent process
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..e88d387 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -101,6 +101,7 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_setlength(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,6 +127,7 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_setlength] sys_setlength,
+ };
+ 
+ void
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..fd9abeb 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_setlength 22
+\ No newline at end of file
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..2d20f19 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -91,3 +91,13 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++
++uint64
++sys_setlength(void)
++{
++  int len;
++
++  argint(0, &len);
++  return setlength(len);
++}
+\ No newline at end of file
+diff --git a/user/testloop.c b/user/testloop.c
+new file mode 100644
+index 0000000..0711fdc
+--- /dev/null
++++ b/user/testloop.c
+@@ -0,0 +1,21 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++int main(int argc, char* argv[]){
++    int pid = getpid();
++    int entry_time = uptime();
++    uint32 iters = atoi(argv[1]);
++    setlength(iters);
++    printf("Process %d: Starting %u iterations at time %d\n", pid, iters, entry_time);
++    for(int i = 0; i < iters; i++){
++        // do some dummy work
++        for(int j = 0; j < 50000000; j++){
++            int x = j * j;
++            x = x + 1;
++        }
++    }
++    int exit_time = uptime();
++    printf("Process %d: Finished at time %d\n", pid, exit_time);
++    exit(0);
++}
+\ No newline at end of file
+diff --git a/user/user.h b/user/user.h
+index 04013ca..45b5ed8 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -22,6 +22,7 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int setlength(int);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..d2e49f2 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,4 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("setlength");
+\ No newline at end of file
