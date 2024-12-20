@@ -1,0 +1,176 @@
+Visitor 2005 has arrived at A at time stamp 429190
+Visitor 2003 has arrived at A at time stamp 435510
+Visitor 1001 has arrived at A at time stamp 436166
+Visitor 1002 has arrived at A at time stamp 436273
+Visitor 2006 has arrived at A at time stamp 436877
+Visitor 2001 has arrived at A at time stamp 437537
+Visitor 2004 has arrived at A at time stamp 438152
+Visitor 1002 has arrived at B at time stamp 438631
+Visitor 2001 has arrived at B at time stamp 517270
+Visitor 2001 is at step 1 at time stamp 674169
+Visitor 1004 has arrived at A at time stamp 675577
+Visitor 1006 has arrived at A at time stamp 676244
+Visitor 2002 has arrived at A at time stamp 753499
+Visitor 1006 has arrived at B at time stamp 754251
+Visitor 2003 has arrived at B at time stamp 754413
+Visitor 1001 has arrived at B at time stamp 754520
+Visitor 2004 has arrived at B at time stamp 754612
+Visitor 1003 has arrived at A at time stamp 754706
+Visitor 2001 is at step 2 at time stamp 755105
+Visitor 1005 has arrived at A at time stamp 755345
+Visitor 1004 has arrived at B at time stamp 755756
+Visitor 1005 has arrived at B at time stamp 756023
+Visitor 1008 has arrived at A at time stamp 756114
+Visitor 2005 has arrived at B at time stamp 756219
+Visitor 1008 has arrived at B at time stamp 756315
+Visitor 1007 has arrived at A at time stamp 756411
+Visitor 1009 has arrived at A at time stamp 756506
+Visitor 1007 has arrived at B at time stamp 756601
+Visitor 2006 has arrived at B at time stamp 756674
+Visitor 1003 has arrived at B at time stamp 756781
+Visitor 1002 is at step 1 at time stamp 756878
+Visitor 2001 is at step 3 at time stamp 757240
+Visitor 1010 has arrived at A at time stamp 757477
+Visitor 2001 is at C (entered Gallery 1) at time stamp 758497
+Visitor 1010 has arrived at B at time stamp 758962
+Visitor 2001 is at D (exiting Gallery 1) at time stamp 759405
+Visitor 1002 is at step 2 at time stamp 760734
+Visitor 1009 has arrived at B at time stamp 760844
+Visitor 2001 is at E (entered Gallery 2) at time stamp 761323
+Visitor 1006 is at step 1 at time stamp 761747
+Visitor 1002 is at step 3 at time stamp 761851
+Visitor 2002 has arrived at B at time stamp 762081
+Visitor 2001 is about to enter the photo booth at time stamp 762464
+Visitor 2001 is inside the photo booth at time stamp 763393
+Visitor 1002 is at C (entered Gallery 1) at time stamp 763783
+Visitor 2001 has left the photo booth at time stamp 764251
+Visitor 1002 is at D (exiting Gallery 1) at time stamp 764935
+Visitor 1006 is at step 2 at time stamp 767529
+Visitor 1002 is at E (entered Gallery 2) at time stamp 768886
+Visitor 2003 is at step 1 at time stamp 769037
+Visitor 1006 is at step 3 at time stamp 769181
+Visitor 1002 is about to enter the photo booth at time stamp 769355
+Visitor 2003 is at step 2 at time stamp 770309
+Visitor 1006 is at C (entered Gallery 1) at time stamp 770420
+Visitor 1001 is at step 1 at time stamp 770549
+Visitor 2003 is at step 3 at time stamp 770637
+Visitor 1006 is at D (exiting Gallery 1) at time stamp 771104
+Visitor 1001 is at step 2 at time stamp 771283
+Visitor 1002 is inside the photo booth at time stamp 771889
+Visitor 2003 is at C (entered Gallery 1) at time stamp 772280
+Visitor 1002 has left the photo booth at time stamp 772484
+Visitor 2003 is at D (exiting Gallery 1) at time stamp 772923
+Visitor 1001 is at step 3 at time stamp 773460
+Visitor 2003 is at E (entered Gallery 2) at time stamp 773540
+Visitor 1006 is at E (entered Gallery 2) at time stamp 773658
+Visitor 2004 is at step 1 at time stamp 773804
+Visitor 1006 is about to enter the photo booth at time stamp 773878
+Visitor 2003 is about to enter the photo booth at time stamp 774479
+Visitor 2004 is at step 2 at time stamp 774560
+Visitor 1004 is at step 1 at time stamp 774705
+Visitor 1006 is inside the photo booth at time stamp 774810
+Visitor 1001 is at C (entered Gallery 1) at time stamp 774935
+Visitor 1006 has left the photo booth at time stamp 775048
+Visitor 2003 is inside the photo booth at time stamp 775204
+Visitor 1001 is at D (exiting Gallery 1) at time stamp 775418
+Visitor 2003 has left the photo booth at time stamp 776113
+Visitor 2004 is at step 3 at time stamp 776192
+Visitor 1001 is at E (entered Gallery 2) at time stamp 776338
+Visitor 1004 is at step 2 at time stamp 776448
+Visitor 2004 is at C (entered Gallery 1) at time stamp 776612
+Visitor 1005 is at step 1 at time stamp 776739
+Visitor 2004 is at D (exiting Gallery 1) at time stamp 776855
+Visitor 1004 is at step 3 at time stamp 777556
+Visitor 1001 is about to enter the photo booth at time stamp 777650
+Visitor 2004 is at E (entered Gallery 2) at time stamp 778270
+Visitor 1001 is inside the photo booth at time stamp 778350
+Visitor 1005 is at step 2 at time stamp 778470
+Visitor 1001 has left the photo booth at time stamp 778595
+Visitor 1004 is at C (entered Gallery 1) at time stamp 778850
+Visitor 1005 is at step 3 at time stamp 778962
+Visitor 1004 is at D (exiting Gallery 1) at time stamp 779077
+Visitor 1005 is at C (entered Gallery 1) at time stamp 779197
+Visitor 2005 is at step 1 at time stamp 779273
+Visitor 2004 is about to enter the photo booth at time stamp 780248
+Visitor 2004 is inside the photo booth at time stamp 780350
+Visitor 2005 is at step 2 at time stamp 780468
+Visitor 2004 has left the photo booth at time stamp 780552
+Visitor 1005 is at D (exiting Gallery 1) at time stamp 780687
+Visitor 2005 is at step 3 at time stamp 781499
+Visitor 1005 is at E (entered Gallery 2) at time stamp 781606
+Visitor 2005 is at C (entered Gallery 1) at time stamp 781726
+Visitor 1005 is about to enter the photo booth at time stamp 781800
+Visitor 1008 is at step 1 at time stamp 781913
+Visitor 2005 is at D (exiting Gallery 1) at time stamp 782462
+Visitor 1008 is at step 2 at time stamp 783043
+Visitor 2005 is at E (entered Gallery 2) at time stamp 783154
+Visitor 1008 is at step 3 at time stamp 783240
+Visitor 1005 is inside the photo booth at time stamp 783311
+Visitor 2006 is at step 1 at time stamp 783480
+Visitor 1004 is at E (entered Gallery 2) at time stamp 783560
+Visitor 1008 is at C (entered Gallery 1) at time stamp 783639
+Visitor 2005 is about to enter the photo booth at time stamp 783757
+Visitor 1004 is about to enter the photo booth at time stamp 783838
+Visitor 2006 is at step 2 at time stamp 784006
+Visitor 1007 is at step 1 at time stamp 784620
+Visitor 1008 is at D (exiting Gallery 1) at time stamp 784766
+Visitor 1005 has left the photo booth at time stamp 785287
+Visitor 2006 is at step 3 at time stamp 785407
+Visitor 1008 is at E (entered Gallery 2) at time stamp 785585
+Visitor 2006 is at C (entered Gallery 1) at time stamp 785750
+Visitor 1007 is at step 2 at time stamp 785872
+Visitor 2006 is at D (exiting Gallery 1) at time stamp 785978
+Visitor 1008 is about to enter the photo booth at time stamp 786534
+Visitor 2006 is at E (entered Gallery 2) at time stamp 787036
+Visitor 2005 is inside the photo booth at time stamp 787140
+Visitor 2006 is about to enter the photo booth at time stamp 787217
+Visitor 1003 is at step 1 at time stamp 787333
+Visitor 1007 is at step 3 at time stamp 787461
+Visitor 1003 is at step 2 at time stamp 787559
+Visitor 1007 is at C (entered Gallery 1) at time stamp 787635
+Visitor 2005 has left the photo booth at time stamp 787756
+Visitor 1007 is at D (exiting Gallery 1) at time stamp 787843
+Visitor 1010 is at step 1 at time stamp 788464
+Visitor 1004 is inside the photo booth at time stamp 788600
+Visitor 1003 is at step 3 at time stamp 788761
+Visitor 1007 is at E (entered Gallery 2) at time stamp 788881
+Visitor 1010 is at step 2 at time stamp 788966
+Visitor 1008 is inside the photo booth at time stamp 789133
+Visitor 1007 is about to enter the photo booth at time stamp 789311
+Visitor 1008 has left the photo booth at time stamp 789387
+Visitor 1003 is at C (entered Gallery 1) at time stamp 789494
+Visitor 1004 has left the photo booth at time stamp 790032
+Visitor 1003 is at D (exiting Gallery 1) at time stamp 790263
+Visitor 2006 is inside the photo booth at time stamp 790425
+Visitor 1003 is at E (entered Gallery 2) at time stamp 791166
+Visitor 1009 is at step 1 at time stamp 791258
+Visitor 1010 is at step 3 at time stamp 791358
+Visitor 2006 has left the photo booth at time stamp 791479
+Visitor 1003 is about to enter the photo booth at time stamp 791647
+Visitor 1009 is at step 2 at time stamp 792164
+Visitor 1003 is inside the photo booth at time stamp 792273
+Visitor 1007 is inside the photo booth at time stamp 792366
+Visitor 1010 is at C (entered Gallery 1) at time stamp 792517
+Visitor 2002 is at step 1 at time stamp 792619
+Visitor 1010 is at D (exiting Gallery 1) at time stamp 792705
+Visitor 1003 has left the photo booth at time stamp 792779
+Visitor 1009 is at step 3 at time stamp 840321
+Visitor 1007 has left the photo booth at time stamp 840682
+Visitor 1010 is at E (entered Gallery 2) at time stamp 840850
+Visitor 2002 is at step 2 at time stamp 840938
+Visitor 1010 is about to enter the photo booth at time stamp 864611
+Visitor 1009 is at C (entered Gallery 1) at time stamp 865376
+Visitor 1010 is inside the photo booth at time stamp 865470
+Visitor 2002 is at step 3 at time stamp 865820
+Visitor 1010 has left the photo booth at time stamp 865975
+Visitor 2002 is at C (entered Gallery 1) at time stamp 866128
+Visitor 1009 is at D (exiting Gallery 1) at time stamp 866272
+Visitor 2002 is at D (exiting Gallery 1) at time stamp 866952
+Visitor 1009 is at E (entered Gallery 2) at time stamp 867483
+Visitor 2002 is at E (entered Gallery 2) at time stamp 867614
+Visitor 1009 is about to enter the photo booth at time stamp 867708
+Visitor 2002 is about to enter the photo booth at time stamp 868186
+Visitor 2002 is inside the photo booth at time stamp 868323
+Visitor 2002 has left the photo booth at time stamp 868495
+Visitor 1009 is inside the photo booth at time stamp 868617
+Visitor 1009 has left the photo booth at time stamp 926988
