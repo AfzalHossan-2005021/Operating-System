@@ -12,7 +12,7 @@ This repository includes a submodule and a patch file that must be applied after
 2. **Navigate to directory**:
    Navigate to the `Offline` directory:
    ```bash
-   cd Operating-System/Inter-process-Communication/Offline
+   cd Operating-System/Inter-Process-Communication/Offline
    ```  
 
 3. **Compile**:
